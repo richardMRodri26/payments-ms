@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { envs } from 'src/config';
 import Stripe from 'stripe';
-import { PaymentSessionDto } from './dto/payment-session.dto';
-import { Request, Response } from 'express';
+import type { PaymentSessionDto } from './dto/payment-session.dto';
+import type { Request, Response } from 'express';
 
 @Injectable()
 export class PaymentsService {
@@ -12,7 +12,7 @@ export class PaymentsService {
 
   async createPaymentSession(paymentSessionDto: PaymentSessionDto) {
 
-    const { currency, items } = paymentSessionDto;
+    const { currency, items, orderId } = paymentSessionDto;
 
     const lineItems = items.map(item => ({
       price_data: {
@@ -28,16 +28,15 @@ export class PaymentsService {
     }));
 
     const session = await this.stripe.checkout.sessions.create({
-      // TODO: Colocar aquí el ID de mi orden
       payment_intent_data: {
         metadata: {
-          order_id: '12345'
+          orderId: orderId
         }
       },
       line_items: lineItems,
       mode: 'payment',
-      success_url: 'http://localhost:3003/payments/success',
-      cancel_url: 'http://localhost:3003/payments/cancel'
+      success_url: envs.stripeSuccessUrl,
+      cancel_url: envs.stripeCancelUrl
     });
 
     return session;
@@ -45,7 +44,31 @@ export class PaymentsService {
   }
 
   async stripeWebhook(req: Request, res: Response) {
-    const sig = req.headers['stripe-signature'];
+    const sig = req.headers['stripe-signature'] as string;
+
+    let event: Stripe.Event;
+
+    try {
+      event = this.stripe.webhooks.constructEvent(
+        req['rawBody'],
+        sig,
+        envs.stripeEndpointSecret
+      );
+    } catch (error) {
+      res.status(400).send(`Webhook Error: ${error?.message}`);
+      return;
+    }
+    console.log('event :>> ', event);
+
+    switch (event.type) {
+      case "charge.succeeded":
+        const chargeSucceeded = event.data.object;
+        console.log({ event, metadata: { orderId: chargeSucceeded.metadata.orderId } });
+      break;
+
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
 
     return res.status(200).json( { sig })
   }

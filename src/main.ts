@@ -9,7 +9,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true
   });
-  await app.listen(envs.port);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -17,6 +16,8 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   )
+
+  await app.listen(envs.port);
 
   logger.log(`Application is running on: ${envs.port}`);
 }
