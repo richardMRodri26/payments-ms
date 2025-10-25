@@ -6,9 +6,7 @@ COPY package.json ./
 COPY pnpm-lock.yaml ./
 RUN npm install -g pnpm
 RUN pnpm install
+COPY . .
 
-# Solo copiar los archivos necesarios para desarrollo, no todo el código
-COPY nest-cli.json ./
-COPY tsconfig*.json ./
-
+# CMD ["pnpm", "run", "start:dev"]
 EXPOSE 3003
