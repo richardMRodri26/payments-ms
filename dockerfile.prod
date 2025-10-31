@@ -45,6 +45,9 @@ COPY --from=build /usr/src/app/dist ./dist
 
 ENV NODE_ENV=production
 
+# Cambiar ownership al usuario node
+RUN chown -R node:node /usr/src/app
+
 USER node
 
 EXPOSE 3000
